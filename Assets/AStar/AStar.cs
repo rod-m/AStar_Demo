@@ -132,7 +132,7 @@ public class AStar : MonoBehaviour
             else
             {
                 openList.Remove(currentNode);
-                var walkableTiles = GetNeighbors(currentNode);
+                var walkableTiles = GetNeighbours(currentNode);
                 
                 foreach (var neighbor in walkableTiles)
                 {
@@ -167,7 +167,7 @@ public class AStar : MonoBehaviour
         }
     }
 
-    private List<Node> GetNeighbors(Node currentNode)
+    private List<Node> GetNeighbours(Node currentNode)
     {
         var neighbours = new List<Node>();
         Vector3Int cur = currentNode.Location;
