@@ -30,7 +30,7 @@ public class AStar : MonoBehaviour
     [SerializeField] private Tile targetTile;
     private Node[,] fullNodeGrid;
     private List<Node> openList = new List<Node>();
-    private List<Node> closedeList = new List<Node>();
+
     private List<Node> allWalkableNodeList = new List<Node>();
     private int maxGridX = 0;
     private int maxGridY = 0;
@@ -88,7 +88,6 @@ public class AStar : MonoBehaviour
 
         foreach (var node in allWalkableNodeList)
         {
-            
             node.SetDistance(targetNode.Location);
         }
         startNode = fullNodeGrid[startNode.X, startNode.Y];
@@ -132,9 +131,6 @@ public class AStar : MonoBehaviour
             }
             else
             {
-                // draw tile
-
-                closedeList.Add(currentNode);
                 openList.Remove(currentNode);
                 var walkableTiles = GetNeighbors(currentNode);
                 
