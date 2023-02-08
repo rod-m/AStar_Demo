@@ -7,18 +7,23 @@ using UnityEngine;
 [Serializable]
 public class Node
 {
-
-    [SerializeField] private Vector3Int location;
-    public Vector3Int Location
-    {
-        get => location; set => location = value;
-    }
-
-    public int X => location.x;
-    public int Y => location.y;
+    public string Name => $"node_{X},{Y}";
+    public bool Walkable { get; set; }
+    public int X;
+    public int Y;
+    public int F => this.G + this.H;
     public int G { get; set; }
     public int H { get; private set; }
-    public int F => this.G + this.H;
+    public int D = 10;
+
+    public Vector3Int Location
+    {
+        get
+        {
+            return new Vector3Int(X, Y);
+        }
+     
+    }
 
     public Node ParentNode
     {
@@ -30,10 +35,11 @@ public class Node
     {
         G = Int32.MaxValue; // start at infinity
     }
-    public Node(Vector3Int _pos, Vector3Int _target, int gCost, Node _parent)
+    public Node(Vector3Int _pos, Vector3Int _target, int gCost)
     {
-        Location = _pos;
-        ParentNode = _parent;
+        X = _pos.x;
+        Y = _pos.y;
+
         G = gCost;
         SetDistance(_target);
     }
@@ -42,7 +48,7 @@ public class Node
     //So how many tiles left and right, up and down, ignoring walls, to get there. 
     public void SetDistance(Vector3Int target)
     {
-        // H = Mathf.RoundToInt(Vector3Int.Distance(Location, target));
-        H = 10 * (Mathf.Abs(Location.x - target.x) + Mathf.Abs(Location.y - target.y));
+        H = Mathf.RoundToInt(Vector3Int.Distance(Location, target));
+        //H = 10 * (Mathf.Abs(X - target.x) + Mathf.Abs(Y - target.y));
     }
 }

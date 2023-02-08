@@ -17,7 +17,10 @@ public class AStar : MonoBehaviour
 
     // use the tile map grid for search
     [SerializeField] private Grid grid;
-    [FormerlySerializedAs("start")] [SerializeField] private Node startNode;
+
+    [FormerlySerializedAs("start")] [SerializeField]
+    private Node startNode;
+
     [SerializeField] private Node targetNode;
     [SerializeField] private Tile pathTile;
     [SerializeField] private Tile startTile;
@@ -31,164 +34,195 @@ public class AStar : MonoBehaviour
     private int maxGridX = 0;
     private int maxGridY = 0;
     private int cycleCount = 0;
+
     void Start()
     {
-        startNode.G = 0;
-        startNode.SetDistance(targetNode.Location);
-        openList.Add(startNode);
         
+
         BoundsInt bounds = groundMap.cellBounds;
         Vector3Int pos = new Vector3Int(bounds.position.x, bounds.position.y, 0);
         targetMap.SetTile(startNode.Location, startTile);
-        targetMap.SetTile(targetNode.Location, targetTile);
+
         maxGridX = bounds.size.x;
         maxGridY = bounds.size.y;
         Debug.Log($"start {startNode.Location} {maxGridX} {maxGridY}");
-        fullNodeGrid = new Node[maxGridX,maxGridY];
-        for(int i=0; i<groundMap.size.x; i++)
+        fullNodeGrid = new Node[maxGridX, maxGridY];
+        for (int i = 0; i < maxGridX; i++)
         {
-            for(int j=0; j < groundMap.size.y; j++)
+            for (int j = 0; j < maxGridY; j++)
             {
+                var node = new Node(new Vector3Int(i, j, 0), targetNode.Location, Int32.MaxValue);
+                var obstacle = obstacleMap.GetTile(node.Location);
+                node.Walkable = false;
+                if (obstacle != null)
+                {
+                    node.Walkable = false;
+                    Debug.Log("un walkable!");
+                }
+                else
+                {
+                    var ground = groundMap.GetTile(node.Location);
+                    if (ground != null)
+                    {
+                        node.Walkable = true;
+                    }
+                }
                 
-                fullNodeGrid[i,j] = new Node(new Vector3Int(i, j, 0), targetNode.Location, Int32.MaxValue, null);
+                var target = targetMap.GetTile(node.Location);
+                if (target != null)
+                {
+                    targetNode = node;
+                    Debug.Log("Found Target");
+                }
+                fullNodeGrid[i, j] = node;
             }
         }
+
+        startNode = fullNodeGrid[startNode.X, startNode.Y];
+        startNode.G = 0;
+        startNode.ParentNode = null;
+        startNode.SetDistance(targetNode.Location);
+        openList.Add(startNode);
         pathFinder = PathFinderUpdater();
         StartCoroutine(pathFinder);
     }
 
-   
+    void DrawPath(Node node)
+    {
+        Debug.Log($"startNode {startNode.G} {startNode.Location}");
+        while (true)
+        {
+            pathMap.SetTile(node.Location, pathTile);
+            cycleCount++;
+            node = node.ParentNode;
+            if (node == null)
+            {
+                return;
+            }
+            Debug.Log($"{cycleCount} {node.Name} {node.F}");
+            if(cycleCount > 150) return;
+        }
+    }
+
     IEnumerator PathFinderUpdater()
     {
         while (openList.Any())
         {
             var currentNode = openList.OrderBy(x => x.F).First();
-            pathMap.SetTile(currentNode.Location, visitedTile);
+            
             if (currentNode.Location == targetNode.Location)
             {
-                Debug.Log("Found Target!");
+                Debug.Log("*********************");
+                Debug.Log("****Found Target!****");
+                Debug.Log("*********************");
+      
+                DrawPath(currentNode);
                 StopCoroutine(pathFinder);
             }
             else
             {
-                
                 // draw tile
-                
+
                 closedeList.Add(currentNode);
                 openList.Remove(currentNode);
-                var walkableTiles = GetWalkableTiles(currentNode);
-                Debug.Log($"{cycleCount} Visiting {currentNode.Location} F: {currentNode.F} H: {currentNode.H}");
+                var walkableTiles = GetNeighbors(currentNode);
+                
                 foreach (var neighbor in walkableTiles)
                 {
-
-                    cycleCount++;
-                    Debug.Log($"neighbor {neighbor.Location} F: {neighbor.F} H: {neighbor.H} G {neighbor.G}");
-                    //It's already in the active list, but that's OK, maybe this new tile has a better value (e.g. We might zigzag earlier but this is now straighter). 
-                    if(openList.Any(x => x.X == neighbor.X && x.Y == neighbor.Y))
+                  if(closedeList.Contains(neighbor)) continue;
+                    
+                    int tentativeG = currentNode.G + neighbor.D;
+                   
+                    if (tentativeG < neighbor.G)
                     {
-                        var existingTile = openList.First(x => x.X == neighbor.X && x.Y == neighbor.Y);
-                        if(existingTile.F > currentNode.F)
+                        neighbor.ParentNode = currentNode;
+                        neighbor.G = tentativeG;
+                        if (!openList.Contains(neighbor))
                         {
-                            openList.Remove(existingTile);
                             openList.Add(neighbor);
                         }
-                    }else
-                    {
-                        //We've never seen this tile before so add it to the list. 
-                        openList.Add(neighbor);
-                        
                     }
-                    pathMap.SetTile(neighbor.Location, checkTile);
+
+                   
+                    //Debug.Log($"neighbor {neighbor.Location} F: {neighbor.F} H: {neighbor.H} G {neighbor.G}");
+
+
+                    //pathMap.SetTile(neighbor.Location, checkTile);
                 }
             }
-
-            yield return new WaitForSeconds(0.5f);
+            Debug.Log($"Visiting {currentNode.Location} F: {currentNode.F} H: {currentNode.H} maxGridX {maxGridX} maxGridY {maxGridY}");
+            pathMap.SetTile(currentNode.Location, visitedTile);
+            yield return new WaitForSeconds(0.1f);
         }
     }
 
-    private List<Node> GetWalkableTiles(Node currentNode)
+    private List<Node> GetNeighbors(Node currentNode)
     {
         var neighbours = new List<Node>();
         Vector3Int cur = currentNode.Location;
         Node aNode;
-        if (cur.x + 1 <= maxGridX)
+        if (cur.x + 1 < maxGridX)
         {
             aNode = fullNodeGrid[cur.x + 1, cur.y]; // R
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 10;
             neighbours.Add(aNode);
         }
 
-        if (cur.x + 1 <= maxGridX && cur.y + 1 < maxGridY)
+        if (cur.x + 1 < maxGridX && cur.y + 1 < maxGridY)
         {
             aNode = fullNodeGrid[cur.x + 1, cur.y + 1]; // TR
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 14;
+            aNode.D = 14;
             neighbours.Add(aNode);
         }
 
         if (cur.y + 1 < maxGridY)
         {
             aNode = fullNodeGrid[cur.x, cur.y + 1]; // T
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 10;
             neighbours.Add(aNode);
         }
 
         if (cur.x - 1 >= 0 && cur.y + 1 < maxGridY)
         {
             aNode = fullNodeGrid[cur.x - 1, cur.y + 1]; // TL
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 14;
+            aNode.D = 14;
             neighbours.Add(aNode);
         }
 
         if (cur.x - 1 >= 0)
         {
             aNode = fullNodeGrid[cur.x - 1, cur.y]; // L
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 10;
             neighbours.Add(aNode);
         }
 
         if (cur.x - 1 >= 0 && cur.y - 1 >= 0)
         {
             aNode = fullNodeGrid[cur.x - 1, cur.y - 1]; // BL
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 14;
             neighbours.Add(aNode);
         }
+
         if (cur.y - 1 >= 0)
         {
             aNode = fullNodeGrid[cur.x, cur.y - 1]; // B
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 10;
             neighbours.Add(aNode);
         }
-        if (cur.x + 1 <= maxGridX && cur.y - 1 >= 0)
+
+        if (cur.x + 1 < maxGridX && cur.y - 1 >= 0)
         {
             aNode = fullNodeGrid[cur.x + 1, cur.y - 1]; // BR
-            aNode.ParentNode = currentNode;
-            aNode.G = currentNode.G + 10;
+            aNode.D = 14;
             neighbours.Add(aNode);
         }
+
         var possible = new List<Node>();
         foreach (var node in neighbours)
         {
-            var obstacle = obstacleMap.GetTile(node.Location);
-          
-            if (obstacle != null)
-            {
-                Debug.Log("un walkable!");
-                continue;
-                
-            }
-            
-            //Debug.Log($"node f {node.F},{node.G},{node.H} current f: {currentNode.F},{currentNode.G},{currentNode.H}");
-            if(node.H > currentNode.H) continue;  // is further away!
-            
+            if (!node.Walkable) continue;
+
             possible.Add(node);
-   
         }
 
         return possible;
