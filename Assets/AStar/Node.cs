@@ -11,7 +11,7 @@ public class Node
     public bool Walkable { get; set; }
     public int X;
     public int Y;
-    public int F => this.G + this.H;
+    public int F; // => this.G + this.H;
     public int G { get; set; }
     public int H { get; private set; }
     public int D = 10;
@@ -20,7 +20,7 @@ public class Node
     {
         get
         {
-            return new Vector3Int(X, Y);
+            return new Vector3Int(X, Y, 0);
         }
      
     }
@@ -35,20 +35,17 @@ public class Node
     {
         G = Int32.MaxValue; // start at infinity
     }
-    public Node(Vector3Int _pos, Vector3Int _target, int gCost)
+    public Node(Vector3Int _pos)
     {
         X = _pos.x;
         Y = _pos.y;
-
-        G = gCost;
-        SetDistance(_target);
+        G = Int32.MaxValue; // start at infinity
     }
 
     //The distance is essentially the estimated distance, ignoring walls to our target. 
     //So how many tiles left and right, up and down, ignoring walls, to get there. 
     public void SetDistance(Vector3Int target)
     {
-        H = Mathf.RoundToInt(Vector3Int.Distance(Location, target));
-        //H = 10 * (Mathf.Abs(X - target.x) + Mathf.Abs(Y - target.y));
+        H = 10 * (Mathf.Abs(X - target.x) + Mathf.Abs(Y - target.y));
     }
 }

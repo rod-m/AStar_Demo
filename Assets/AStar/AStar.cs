@@ -31,10 +31,10 @@ public class AStar : MonoBehaviour
     private Node[,] fullNodeGrid;
     private List<Node> openList = new List<Node>();
     private List<Node> closedeList = new List<Node>();
+    private List<Node> allWalkableNodeList = new List<Node>();
     private int maxGridX = 0;
     private int maxGridY = 0;
-    private int cycleCount = 0;
-
+    private int AStarCost = 0; // count cycles
     void Start()
     {
         
@@ -47,17 +47,18 @@ public class AStar : MonoBehaviour
         maxGridY = bounds.size.y;
         Debug.Log($"start {startNode.Location} {maxGridX} {maxGridY}");
         fullNodeGrid = new Node[maxGridX, maxGridY];
+        
         for (int i = 0; i < maxGridX; i++)
         {
             for (int j = 0; j < maxGridY; j++)
             {
-                var node = new Node(new Vector3Int(i, j, 0), targetNode.Location, Int32.MaxValue);
+                var node = new Node(new Vector3Int(i, j, 0));
                 var obstacle = obstacleMap.GetTile(node.Location);
                 node.Walkable = false;
                 if (obstacle != null)
                 {
                     node.Walkable = false;
-                    Debug.Log("un walkable!");
+                    //Debug.Log("un walkable!");
                 }
                 else
                 {
@@ -65,6 +66,7 @@ public class AStar : MonoBehaviour
                     if (ground != null)
                     {
                         node.Walkable = true;
+                        allWalkableNodeList.Add(node);
                     }
                 }
                 
@@ -72,35 +74,44 @@ public class AStar : MonoBehaviour
                 if (target != null)
                 {
                     targetNode = node;
-                    Debug.Log("Found Target");
+                    //Debug.Log("Found Target");
                 }
+                
                 fullNodeGrid[i, j] = node;
             }
         }
+        if (targetNode == null)
+        {
+            Debug.LogError("Target Not FOUND!");
+            return;
+        }
 
+        foreach (var node in allWalkableNodeList)
+        {
+            
+            node.SetDistance(targetNode.Location);
+        }
         startNode = fullNodeGrid[startNode.X, startNode.Y];
+        startNode.Walkable = false;
         startNode.G = 0;
         startNode.ParentNode = null;
-        startNode.SetDistance(targetNode.Location);
+        //startNode.SetDistance(targetNode.Location);
         openList.Add(startNode);
         pathFinder = PathFinderUpdater();
+       
         StartCoroutine(pathFinder);
     }
 
     void DrawPath(Node node)
     {
-        Debug.Log($"startNode {startNode.G} {startNode.Location}");
         while (true)
         {
             pathMap.SetTile(node.Location, pathTile);
-            cycleCount++;
             node = node.ParentNode;
             if (node == null)
             {
                 return;
             }
-            Debug.Log($"{cycleCount} {node.Name} {node.F}");
-            if(cycleCount > 150) return;
         }
     }
 
@@ -112,9 +123,9 @@ public class AStar : MonoBehaviour
             
             if (currentNode.Location == targetNode.Location)
             {
-                Debug.Log("*********************");
-                Debug.Log("****Found Target!****");
-                Debug.Log("*********************");
+                Debug.Log("**************************************");
+                Debug.Log($"**** Found Target in {AStarCost}!****");
+                Debug.Log("**************************************");
       
                 DrawPath(currentNode);
                 StopCoroutine(pathFinder);
@@ -129,29 +140,33 @@ public class AStar : MonoBehaviour
                 
                 foreach (var neighbor in walkableTiles)
                 {
-                  if(closedeList.Contains(neighbor)) continue;
-                    
+                    AStarCost++;
+           
                     int tentativeG = currentNode.G + neighbor.D;
                    
                     if (tentativeG < neighbor.G)
                     {
                         neighbor.ParentNode = currentNode;
                         neighbor.G = tentativeG;
+                        neighbor.F = tentativeG + neighbor.H;
                         if (!openList.Contains(neighbor))
                         {
                             openList.Add(neighbor);
                         }
+                        
                     }
 
                    
                     //Debug.Log($"neighbor {neighbor.Location} F: {neighbor.F} H: {neighbor.H} G {neighbor.G}");
 
 
-                    //pathMap.SetTile(neighbor.Location, checkTile);
+                    pathMap.SetTile(neighbor.Location, checkTile);
+                   
                 }
+                Debug.Log($"Visiting {currentNode.Location} F: {currentNode.F} G: {currentNode.G} H: {currentNode.H}");
+                pathMap.SetTile(currentNode.Location, visitedTile);
             }
-            Debug.Log($"Visiting {currentNode.Location} F: {currentNode.F} H: {currentNode.H} maxGridX {maxGridX} maxGridY {maxGridY}");
-            pathMap.SetTile(currentNode.Location, visitedTile);
+            
             yield return new WaitForSeconds(0.1f);
         }
     }
@@ -221,7 +236,7 @@ public class AStar : MonoBehaviour
         foreach (var node in neighbours)
         {
             if (!node.Walkable) continue;
-
+            
             possible.Add(node);
         }
 
