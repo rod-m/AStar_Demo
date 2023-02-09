@@ -30,6 +30,7 @@ public class AStar : MonoBehaviour
     [SerializeField] private Tile targetTile;
     private Node[,] fullNodeGrid;
     private List<Node> openList = new List<Node>();
+    private List<Node> closedList = new List<Node>();
 
     private List<Node> allWalkableNodeList = new List<Node>();
     private int maxGridX = 0;
@@ -132,12 +133,16 @@ public class AStar : MonoBehaviour
             else
             {
                 openList.Remove(currentNode);
+                closedList.Add(currentNode);
                 var walkableTiles = GetNeighbours(currentNode);
                 
                 foreach (var neighbor in walkableTiles)
                 {
                     AStarCost++;
-           
+                    // if (closedList.Contains(neighbor)){
+                    //     continue;
+                    //     
+                    // }
                     int tentativeG = currentNode.G + neighbor.D;
                    
                     if (tentativeG < neighbor.G)
@@ -159,7 +164,7 @@ public class AStar : MonoBehaviour
                     pathMap.SetTile(neighbor.Location, checkTile);
                    
                 }
-                Debug.Log($"Visiting {currentNode.Location} F: {currentNode.F} G: {currentNode.G} H: {currentNode.H}");
+                Debug.Log($"{AStarCost} Visiting {currentNode.Location} F: {currentNode.F} G: {currentNode.G} H: {currentNode.H}");
                 pathMap.SetTile(currentNode.Location, visitedTile);
             }
             
@@ -231,7 +236,11 @@ public class AStar : MonoBehaviour
         var possible = new List<Node>();
         foreach (var node in neighbours)
         {
-            if (!node.Walkable) continue;
+            if (!node.Walkable)
+            {
+                continue;
+                
+            };
             
             possible.Add(node);
         }
